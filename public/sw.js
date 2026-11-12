@@ -1,6 +1,6 @@
 // Service worker : met toute l'application en cache pour un fonctionnement 100 % hors ligne.
 // Pense à changer VERSION à chaque mise à jour du contenu.
-const VERSION = 'gidro-v1.2.0';
+const VERSION = 'gidro-v1.3.0';
 const FILES = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
