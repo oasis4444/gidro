@@ -3,7 +3,7 @@ import { COURSES, getCourse, allLessons } from '../data/courses.js';
 import * as S from './store.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as E from './engine.js';
-import { speak, ttsAvailable, sfx, listen, speechRecognitionAvailable } from './audio.js';
+import { speak, ttsAvailable, sfx, listen, speechRecognitionAvailable, voicesFor, voiceFor, setPreferredVoices } from './audio.js';
 import { mascot } from './mascot.js';
 
 const app = document.getElementById('app');
@@ -132,6 +132,7 @@ const NAV = [['learn', '🏠'], ['review', '🔄'], ['quests', '🎯'], ['stats'
 
 function showMain(tab) {
   const c = course();
+  setPreferredVoices(P.data.settings.voices);
   S.ensureCourse(P, c.id);
   S.dailyQuests(P); save();
   const streak = S.streakAlive(P);
@@ -310,6 +311,10 @@ function renderSettings(el) {
       <div class="setting"><b>${t('uiLang')}</b>${seg('ui', ['fr', 'mg'], s.ui, v => v === 'fr' ? 'Français' : 'Malagasy')}</div>
       <div class="setting"><b>${t('sound')}</b>${sw('sound', s.sound)}</div>
       <div class="setting"><div><b>${t('speech')}</b><div class="muted" style="font-size:.82rem">${speechRecognitionAvailable() ? t('speechNote') : t('speakUnavailable')}</div></div>${sw('speech', s.speech)}</div>
+      <div class="setting"><div class="grow"><b>${t('voice')} ${course().flag}</b>
+        <div class="row" style="margin-top:8px"><select class="field grow" id="voicesel" style="padding:10px 12px">${voicesFor(course().tts).map(v => `<option value="${esc(v.name)}" ${voiceFor(course().tts)?.name === v.name ? 'selected' : ''}>${esc(v.name)} — ${v.localService ? t('voiceOffline') : t('voiceOnline')}</option>`).join('')}</select>
+        <button class="btn blue" id="voicetest" style="padding:10px 14px">▶</button></div>
+        <div class="muted" style="font-size:.8rem;margin-top:6px">${t('voiceHelp')}</div></div></div>
       <div class="setting"><b>${t('voiceRate')}</b>${seg('rate', [0.7, 0.85, 1], s.rate, v => v + '×')}</div>
       <div class="setting"><b>${t('dailyGoal')}</b>${seg('goal', [10, 20, 30, 50], s.goal)}</div>
       ${audioOk() ? '' : `<p class="muted" style="font-size:.85rem">⚠️ ${t('voiceMissing')}</p>`}
@@ -336,6 +341,9 @@ function renderSettings(el) {
     if (k === 'rate') say(course().units[0].lessons[0].sentences[0][0]);
     showMain('settings');
   });
+  const vs = $('#voicesel');
+  if (vs) vs.onchange = () => { (s.voices ||= {})[course().tts] = vs.value; save(); setPreferredVoices(s.voices); say(course().units[0].lessons[0].sentences[0][0]); };
+  $('#voicetest').onclick = () => say(course().units[0].lessons[0].sentences[0][0]);
   $('#courses').onclick = courseSwitcher;
   $('#exp').onclick = () => {
     const blob = new Blob([JSON.stringify(S.exportAll(), null, 1)], { type: 'application/json' });
