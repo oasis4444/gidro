@@ -1,0 +1,42 @@
+# Génère automatiquement les voix naturelles (Kokoro) à chaque modification des cours,
+# puis enregistre les fichiers MP3 dans public/audio.
+name: Générer les voix
+on:
+  push:
+    branches: [main]
+    paths: ['public/data/courses.js', 'scripts/**', '.github/workflows/voices.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: voices
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/cache@v4
+        with: { path: models, key: kokoro-onnx-v1.0 }
+      - name: Télécharger le modèle Kokoro
+        run: |
+          mkdir -p models && cd models
+          base=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+          [ -s kokoro-v1.0.onnx ] || curl -fsSL -o kokoro-v1.0.onnx $base/kokoro-v1.0.onnx
+          [ -s voices-v1.0.bin ] || curl -fsSL -o voices-v1.0.bin $base/voices-v1.0.bin
+      - name: Installer les outils
+        run: |
+          which ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          pip install kokoro-onnx soundfile
+      - name: Générer les fichiers audio
+        run: |
+          node scripts/export-texts.mjs > /tmp/texts.json
+          python scripts/gen_audio.py /tmp/texts.json
+      - name: Enregistrer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/audio
+          git diff --cached --quiet || (git commit -m "Voix : mise à jour des fichiers audio (Kokoro)" && git pull --rebase && git push)

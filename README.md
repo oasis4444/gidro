@@ -70,3 +70,12 @@ Tout se trouve dans `public/data/courses.js` :
 ```
 
 Après chaque modification, incrémentez `VERSION` dans `public/sw.js` pour que les appareils déjà installés récupèrent la mise à jour.
+
+## Voix naturelles (Kokoro)
+
+Les mots et les phrases sont prononcés par des **voix neuronales pré-enregistrées**, générées avec [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) (modèle open source, licence Apache 2.0) :
+anglais → `af_heart`, espagnol → `ef_dora`, français → `ff_siwis`.
+
+- Le workflow `.github/workflows/voices.yml` se lance automatiquement à chaque modification de `public/data/courses.js`. Il génère les fichiers MP3 dans `public/audio/` et les ajoute au dépôt.
+- L'application télécharge ces fichiers une seule fois, puis les lit **hors ligne**.
+- Si un enregistrement manque, Gidro utilise la meilleure voix installée sur l'appareil (les voix « gadgets » sont ignorées). Vous pouvez aussi choisir la voix dans **Réglages › Voix**.

@@ -3,7 +3,7 @@ import { COURSES, getCourse, allLessons } from '../data/courses.js';
 import * as S from './store.js';
 import { t, setLang, getLang } from './i18n.js';
 import * as E from './engine.js';
-import { speak, ttsAvailable, sfx, listen, speechRecognitionAvailable, voicesFor, voiceFor, setPreferredVoices } from './audio.js';
+import { ttsAvailable, sfx, listen, speechRecognitionAvailable, voicesFor, voiceFor, setPreferredVoices, play, hasClips, loadClips } from './audio.js';
 import { mascot } from './mascot.js';
 
 const app = document.getElementById('app');
@@ -19,8 +19,10 @@ const save = () => S.saveProfile(P);
 const course = () => getCourse(P.data.currentCourse) || COURSES[0];
 const cdata = () => S.ensureCourse(P, course().id);
 const snd = n => { if (P?.data.settings.sound) sfx[n](); };
-const say = (text, rate) => speak(text, course().tts, (rate || 1) * P.data.settings.rate);
-const audioOk = () => ttsAvailable(course().tts);
+const NATURAL = '__natural__';
+const useNatural = () => hasClips(course().id) && (P.data.settings.voices?.[course().tts] ?? NATURAL) === NATURAL;
+const say = (text, rate) => play(text, { cid: course().id, lang: course().tts, rate: (rate || 1) * P.data.settings.rate, natural: useNatural() });
+const audioOk = () => hasClips(course().id) || ttsAvailable(course().tts);
 const levelName = lv => t(lv);
 const fmtTime = s => s >= 60 ? `${Math.floor(s / 60)} ${t('min')} ${s % 60} ${t('sec')}` : `${s} ${t('sec')}`;
 
@@ -312,7 +314,7 @@ function renderSettings(el) {
       <div class="setting"><b>${t('sound')}</b>${sw('sound', s.sound)}</div>
       <div class="setting"><div><b>${t('speech')}</b><div class="muted" style="font-size:.82rem">${speechRecognitionAvailable() ? t('speechNote') : t('speakUnavailable')}</div></div>${sw('speech', s.speech)}</div>
       <div class="setting"><div class="grow"><b>${t('voice')} ${course().flag}</b>
-        <div class="row" style="margin-top:8px"><select class="field grow" id="voicesel" style="padding:10px 12px">${voicesFor(course().tts).map(v => `<option value="${esc(v.name)}" ${voiceFor(course().tts)?.name === v.name ? 'selected' : ''}>${esc(v.name)} — ${v.localService ? t('voiceOffline') : t('voiceOnline')}</option>`).join('')}</select>
+        <div class="row" style="margin-top:8px"><select class="field grow" id="voicesel" style="padding:10px 12px">${hasClips(course().id) ? `<option value="${NATURAL}" ${useNatural() ? 'selected' : ''}>✨ ${t('naturalVoice')}</option>` : ''}${voicesFor(course().tts).map(v => `<option value="${esc(v.name)}" ${!useNatural() && voiceFor(course().tts)?.name === v.name ? 'selected' : ''}>${esc(v.name)} — ${v.localService ? t('voiceOffline') : t('voiceOnline')}</option>`).join('')}</select>
         <button class="btn blue" id="voicetest" style="padding:10px 14px">▶</button></div>
         <div class="muted" style="font-size:.8rem;margin-top:6px">${t('voiceHelp')}</div></div></div>
       <div class="setting"><b>${t('voiceRate')}</b>${seg('rate', [0.7, 0.85, 1], s.rate, v => v + '×')}</div>
@@ -702,8 +704,11 @@ function renderExercise(ex, root, api) {
 
 // ───────── Hors ligne (service worker) & installation ─────────
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready).then(() => { swReady = true; }).catch(() => {});
+  navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+    swReady = true;
+    reg.active?.postMessage('cache-audio'); // télécharge les voix pour l'usage hors ligne
+  }).catch(() => {});
 }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
 
-boot();
+loadClips().finally(boot);

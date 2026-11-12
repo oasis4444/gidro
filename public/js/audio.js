@@ -42,7 +42,7 @@ export const ttsAvailable = lang => !!synth && !!voiceFor(lang);
 
 export function speak(text, lang, rate = 1, voice) {
   if (!synth) return;
-  synth.cancel();
+  synth.cancel(); if (clipEl) clipEl.pause();
   const v = voice || voiceFor(lang);
   const u = new SpeechSynthesisUtterance(text);
   u.lang = v?.lang || lang;
@@ -58,6 +58,32 @@ export function speak(text, lang, rate = 1, voice) {
   // Contournement Chrome : la synthèse reste parfois en pause
   if (synth.paused) synth.resume();
   synth.speak(u);
+}
+
+// ───────── Voix naturelles pré-enregistrées (Kokoro, générées par GitHub Actions) ─────────
+let clips = null, clipEl = null;
+export async function loadClips() {
+  try { const r = await fetch('./audio/index.json'); if (r.ok) clips = await r.json(); } catch {}
+  return clips;
+}
+export const hasClips = cid => !!clips?.[cid];
+export function clipUrl(cid, text) {
+  const files = clips?.[cid]?.files; if (!files) return null;
+  let h = files[text];
+  if (!h) { const low = text.toLowerCase(); const k = Object.keys(files).find(x => x.toLowerCase() === low); h = k && files[k]; }
+  return h ? `./audio/${cid}/${h}.mp3` : null;
+}
+// Joue l'enregistrement s'il existe, sinon la voix de l'appareil
+export function play(text, { cid, lang, rate = 1, natural = true }) {
+  const url = natural && clipUrl(cid, text);
+  if (synth) synth.cancel();
+  if (clipEl) clipEl.pause();
+  if (!url) return speak(text, lang, rate);
+  clipEl = clipEl || new Audio();
+  clipEl.src = url;
+  clipEl.preservesPitch = true; clipEl.webkitPreservesPitch = true;
+  clipEl.playbackRate = Math.max(0.5, Math.min(2, rate));
+  clipEl.play().catch(() => speak(text, lang, rate));
 }
 
 // ───────── Effets sonores (Web Audio) ─────────
