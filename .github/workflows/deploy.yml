@@ -1,0 +1,21 @@
+# Déploiement automatique sur Cloudflare à chaque push sur main.
+# Secrets à ajouter dans GitHub → Settings → Secrets and variables → Actions :
+#   CLOUDFLARE_API_TOKEN  (modèle « Edit Cloudflare Workers »)
+#   CLOUDFLARE_ACCOUNT_ID
+# (Inutile si vous connectez le dépôt directement depuis le tableau de bord Cloudflare.)
+name: Déployer sur Cloudflare
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    if: ${{ vars.CF_DEPLOY_WITH_ACTIONS == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

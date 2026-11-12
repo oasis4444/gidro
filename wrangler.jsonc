@@ -1,0 +1,10 @@
+{
+  // Déploiement Cloudflare Workers (fichiers statiques). Voir README.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gidro",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  }
+}
